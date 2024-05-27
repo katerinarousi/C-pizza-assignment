@@ -10,6 +10,7 @@
 //declare
 pthread_mutex_t mutexTel, mutexRev, mutexMess, mutexCook, mutexOven, mutexDel;
 pthread_cond_t condTel, condCook, condOven, condDel;
+
 int av_tel = Ntel;
 int av_cook = Ncook;
 int av_oven = Noven;
@@ -18,6 +19,12 @@ int total_rev = 0;
 int sales_marg = 0, sales_pepp = 0, sales_special = 0;
 int success = 0;
 int failed =0;
+ 
+// output time 
+long total_service_time =0 ;
+long max_service_time =0 ;
+long total_cooling_time = 0;
+long max_cooling_time  = 0;
 
 
 typedef struct {
@@ -32,8 +39,10 @@ void* manage_order(void* args) {
 	
 	int id = arg->id;
 	int seed = arg->seed;
-	struct timespec start_time;
-	clock_gettime(CLOCK_REALTIME, &start_time);;
+	//struct timespec start_time;
+	struct timespec start_time = arg->start_time;
+	struct timespec pack_time, end_del_time;
+	// clock_gettime(CLOCK_REALTIME, &start_time);;
 	free(arg);
 	
 	int pitses = rand_r(&seed) % (Norderhigh - Norderlow + 1 ) + Norderlow;
@@ -45,13 +54,10 @@ void* manage_order(void* args) {
 		pthread_cond_wait(&condTel, &mutexTel);
 	}
 	av_tel--;
-	//printf("tilefona\n");
 	pthread_mutex_unlock(&mutexTel);
 	
 	//number of pizzas;
-	int special =0;
-	int marg = 0;
-	int pep = 0;
+	int special =0 , marg = 0 , pep = 0;
 	
 	for (int i =0; i < pitses; i++) {
 		int prob = rand_r(&seed) % 100;
@@ -81,7 +87,6 @@ void* manage_order(void* args) {
 		failed++;
 		pthread_mutex_unlock(&mutexRev);
 		
-		
 		return NULL;
 	}
 	
@@ -96,24 +101,22 @@ void* manage_order(void* args) {
 	pthread_mutex_unlock(&mutexRev);
 	
 	pthread_mutex_lock(&mutexMess);
-	//printf("Order with number %d succeeeded: %d margherita, %d pepperoni, %d special\n", id, marg, pep, special);
+	printf("Order No %d succeeeded \n", id);
 	pthread_mutex_unlock(&mutexMess);
 	
 	pthread_mutex_lock(&mutexTel);
 	av_tel++;
-	//printf("mutexTEL\n");
 	pthread_cond_signal(&condTel);
 	pthread_mutex_unlock(&mutexTel);
 	
 	//cooking
-	
 	pthread_mutex_lock(&mutexCook);	
 	while (av_cook == 0) {
 		pthread_cond_wait(&condCook, &mutexCook);
 	}
 	av_cook--;
 	pthread_mutex_unlock(&mutexCook);
-	
+
 	
 	sleep(pitses*Tprep);
 	
@@ -122,7 +125,6 @@ void* manage_order(void* args) {
 	pthread_mutex_unlock(&mutexMess);
 	
 	pthread_mutex_lock(&mutexOven);
-	
 	while (av_oven < pitses) {
 		pthread_cond_wait(&condOven, &mutexOven);
 	}
@@ -139,12 +141,10 @@ void* manage_order(void* args) {
 	pthread_mutex_lock(&mutexMess);
 	//printf("Order with number %d baked\n", id);
 	pthread_mutex_unlock(&mutexMess);
-	//printf("meta to sleep 1\n");
 	
 	
 	
 	//deliver
-	
 	pthread_mutex_lock(&mutexDel);
 	while(av_del==0) {
 		pthread_cond_wait(&condDel, &mutexDel);
@@ -154,28 +154,33 @@ void* manage_order(void* args) {
 	
 	pthread_mutex_lock(&mutexOven);
 	av_oven += pitses;
-	//printf("mesa sto mutex oven\n");
 	pthread_cond_signal(&condOven);
 	pthread_mutex_unlock(&mutexOven);
 	
 	sleep(pitses*Tpack);
+
 	
+    clock_gettime(CLOCK_REALTIME, &pack_time);
+    long elapsed_pack = (pack_time.tv_sec - start_time.tv_sec) ;
+
+
 	pthread_mutex_lock(&mutexMess);
-	//printf("Order with number %d packed\n", id);
+	printf("Order No %d prepared in %ld minutes\n", id, elapsed_pack);
 	pthread_mutex_unlock(&mutexMess);
 	
 	
-	struct timespec pack_time;
-	clock_gettime(CLOCK_REALTIME, &pack_time);
-	long elapsed_pack = pack_time.tv_sec - start_time.tv_sec;
-	//printf("meta tin proti ora\n");
-	
 	int delivery_time = rand_r(&seed) % (Tdelhigh - Tdellow + 1) + Tdellow;
-	
 	sleep(delivery_time);
 	
+	/////////////////////////////////////////////////////
+	struct timespec end_time;
+	clock_gettime(CLOCK_REALTIME, &end_del_time);
+    long elapsed_total = end_del_time.tv_sec - start_time.tv_sec;
+    long cooling_time = end_del_time.tv_sec - pack_time.tv_sec;
+	/////////////////////////////////////////////////////
+
 	pthread_mutex_lock(&mutexMess);
-	//printf("Order with number %d delivered\n", id);
+	printf("Order No %d delivered in %ld minutes\n", id, elapsed_total);
 	pthread_mutex_unlock(&mutexMess);
 	
 	
@@ -183,15 +188,29 @@ void* manage_order(void* args) {
 	av_del++;
 	pthread_cond_broadcast(&condDel);
 	pthread_mutex_unlock(&mutexDel);
+
+	/////////////////////////////////////////////////
+	pthread_mutex_lock(&mutexRev);
 	
-	struct timespec end_time;
-	clock_gettime(CLOCK_REALTIME, &end_time);
-	long elapsed_total = end_time.tv_sec - start_time.tv_sec;
+    total_service_time += elapsed_total;
+    if (elapsed_total > max_service_time) {
+        max_service_time = elapsed_total;
+    }
 	
-	pthread_mutex_lock(&mutexMess);
-	printf("order No %d prepared in %ld minutes.\n", id, elapsed_pack);
-	printf("order No %d delivered in %ld minutes.\n", id, elapsed_total);
-	pthread_mutex_unlock(&mutexMess);
+    total_cooling_time += cooling_time;
+    if (cooling_time > max_cooling_time) {
+        max_cooling_time = cooling_time;
+    }
+    pthread_mutex_unlock(&mutexRev);
+	////////////////////////////////////////////////
+	// struct timespec end_time;
+	// clock_gettime(CLOCK_REALTIME, &end_time);
+	// long elapsed_total = end_time.tv_sec - start_time.tv_sec;
+	
+	// pthread_mutex_lock(&mutexMess);
+	// printf("order No %d prepared in %ld minutes.\n", id, elapsed_pack);
+	// printf("order No %d delivered in %ld minutes.\n", id, elapsed_total);
+	// pthread_mutex_unlock(&mutexMess);
 	
 	pthread_exit(NULL);
 }
@@ -220,9 +239,10 @@ int main(int argc, char* argv[]) {
 	pthread_cond_init(&condDel, NULL);
 	///////////////////////
 	struct timespec start_time;
-	clock_gettime(CLOCK_REALTIME, &start_time);
+	
 	
 	for (int i = 0; i < Ncust; i++) {
+		clock_gettime(CLOCK_REALTIME, &start_time);
 		Thread_args* args = (Thread_args*)malloc(sizeof(Thread_args));
 		args->id = i+1;
 		args->seed = seed +i;
@@ -236,10 +256,19 @@ int main(int argc, char* argv[]) {
 		
 	}
 		
-	printf("Total revenue is %d\n", total_rev);
-	printf("Total sales - M: %d, P: %d, S: %d\n", sales_marg, sales_pepp, sales_special);
-	printf("succes: %d, failed: %d\n", success, failed);
-	
+	printf("Total revenue: %d\n", total_rev);
+    printf("Total margherita: %d\n", sales_marg);
+    printf("Total pepperoni: %d\n", sales_pepp);
+    printf("Total special: %d\n", sales_special);
+    printf("Total successful orders: %d\n", success);
+    printf("Total failed orders: %d\n", failed);
+
+	 if (success > 0) {
+        printf("Average service time: %ld minutes\n", total_service_time / success);
+        printf("Max service time: %ld minutes\n", max_service_time);
+        printf("Average cooling time: %ld minutes\n", (total_cooling_time) / success);
+        printf("Max cooling time: %ld minutes\n", (max_cooling_time));
+    }
 	
 	pthread_mutex_destroy(&mutexTel);
 	pthread_mutex_destroy(&mutexMess);
@@ -254,7 +283,6 @@ int main(int argc, char* argv[]) {
 	pthread_cond_destroy(&condDel);
 	
 	return 0;
-	
 }
 
 	
