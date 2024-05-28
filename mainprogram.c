@@ -26,7 +26,7 @@ long max_service_time =0 ;
 long total_cooling_time = 0;
 long max_cooling_time  = 0;
 
-
+int pelates;
 typedef struct {
 	unsigned int seed;
 	int id;
@@ -34,27 +34,41 @@ typedef struct {
 } Thread_args;
 
 void* manage_order(void* args) {
-	
+	pelates++;
 	Thread_args* arg = (Thread_args*)args;
+	int rc;
 	
 	int id = arg->id;
 	int seed = arg->seed;
-	//struct timespec start_time;
 	struct timespec start_time = arg->start_time;
 	struct timespec pack_time, end_del_time;
-	// clock_gettime(CLOCK_REALTIME, &start_time);;
+	clock_gettime(CLOCK_REALTIME, &start_time);;
 	free(arg);
 	
 	int pitses = rand_r(&seed) % (Norderhigh - Norderlow + 1 ) + Norderlow;
 
 
 	//telephone
-	pthread_mutex_lock(&mutexTel);
+	rc = pthread_mutex_lock(&mutexTel);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}		
+
+
 	while (av_tel == 0) {
-		pthread_cond_wait(&condTel, &mutexTel);
+		rc = pthread_cond_wait(&condTel, &mutexTel);
+		if (rc != 0) {	
+			printf("ERROR: return code from pthread_cond_wait() is %d\n", rc);
+			pthread_exit(args);
+		}
 	}
 	av_tel--;
-	pthread_mutex_unlock(&mutexTel);
+	rc = pthread_mutex_unlock(&mutexTel);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
 	//number of pizzas;
 	int special =0 , marg = 0 , pep = 0;
@@ -74,88 +88,215 @@ void* manage_order(void* args) {
 	int is_failure = rand_r(&seed) % 100;
 	if (is_failure < Pfail) {
 		
-		pthread_mutex_lock(&mutexMess);
+		rc = pthread_mutex_lock(&mutexMess);
+		if (rc != 0) {	
+			printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+			pthread_exit(args);
+		}
 		printf("Order number %d failed\n", id);
-		pthread_mutex_unlock(&mutexMess);
+		rc = pthread_mutex_unlock(&mutexMess);
+		if (rc != 0) {	
+			printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+			pthread_exit(args);
+		}
+
 		
-		pthread_mutex_lock(&mutexTel);
+		rc = pthread_mutex_lock(&mutexTel);
+		if (rc != 0) {	
+			printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+			pthread_exit(args);
+		}	
 		av_tel++;
-		pthread_cond_signal(&condTel);
-		pthread_mutex_unlock(&mutexTel);
+		rc = pthread_cond_signal(&condTel);
+		if (rc != 0) {	
+					printf("ERROR: return code from pthread_cond_signal() is %d\n", rc);
+					pthread_exit(args);
+				}
+
+		rc = pthread_mutex_unlock(&mutexTel);
+		if (rc != 0) {	
+			printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+			pthread_exit(args);
+		}
 		
-		pthread_mutex_lock(&mutexRev);
+		rc = pthread_mutex_lock(&mutexRev);
+		if (rc != 0) {	
+			printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+			pthread_exit(args);
+		}	
 		failed++;
-		pthread_mutex_unlock(&mutexRev);
+		rc = pthread_mutex_unlock(&mutexRev);
+		if (rc != 0) {	
+			printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+			pthread_exit(args);
+		}
 		
 		return NULL;
 	}
 	
 	//calculate revenue
 	int order_revenue = marg*Cm + pep*Cp + special*Cs;
-	pthread_mutex_lock(&mutexRev);
+	rc = pthread_mutex_lock(&mutexRev);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	total_rev += order_revenue;
 	sales_marg += marg;
 	sales_special += special;
 	sales_pepp += pep;
 	success++;
-	pthread_mutex_unlock(&mutexRev);
+	rc = pthread_mutex_unlock(&mutexRev);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
-	pthread_mutex_lock(&mutexMess);
+	rc = pthread_mutex_lock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	printf("Order No %d succeeeded \n", id);
-	pthread_mutex_unlock(&mutexMess);
+	rc = pthread_mutex_unlock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
-	pthread_mutex_lock(&mutexTel);
+	rc = pthread_mutex_lock(&mutexTel);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	av_tel++;
-	pthread_cond_signal(&condTel);
-	pthread_mutex_unlock(&mutexTel);
+	rc = pthread_cond_signal(&condTel);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_cond_signal() is %d\n", rc);
+		pthread_exit(args);
+	}
+	rc = pthread_mutex_unlock(&mutexTel);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
 	//cooking
-	pthread_mutex_lock(&mutexCook);	
+	rc = pthread_mutex_lock(&mutexCook);	
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	while (av_cook == 0) {
 		pthread_cond_wait(&condCook, &mutexCook);
 	}
 	av_cook--;
-	pthread_mutex_unlock(&mutexCook);
-
+	rc = pthread_mutex_unlock(&mutexCook);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
 	sleep(pitses*Tprep);
 	
-	pthread_mutex_lock(&mutexMess);
-	//printf("Order with number %d prepared\n", id);
-	pthread_mutex_unlock(&mutexMess);
+	rc = pthread_mutex_lock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
+	rc = pthread_mutex_unlock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
-	pthread_mutex_lock(&mutexOven);
+	rc = pthread_mutex_lock(&mutexOven);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	while (av_oven < pitses) {
-		pthread_cond_wait(&condOven, &mutexOven);
+		rc = pthread_cond_wait(&condOven, &mutexOven);
+		if (rc != 0) {	
+			printf("ERROR: return code from pthread_cond_wait() is %d\n", rc);
+			pthread_exit(args);
+		}
 	}
 	av_oven -= pitses;
-	pthread_mutex_unlock(&mutexOven);
-	
-	pthread_mutex_lock(&mutexCook);
+	rc = pthread_mutex_unlock(&mutexOven);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
+	rc = pthread_mutex_lock(&mutexCook);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	av_cook++;	
-	pthread_cond_signal(&condCook);
-	pthread_mutex_unlock(&mutexCook);
-	
+	rc = pthread_cond_signal(&condCook);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_cond_signal() is %d\n", rc);
+		pthread_exit(args);
+	}
+	rc = pthread_mutex_unlock(&mutexCook);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
+
 	sleep(Tbake);
 	
-	pthread_mutex_lock(&mutexMess);
-	//printf("Order with number %d baked\n", id);
-	pthread_mutex_unlock(&mutexMess);
+	rc = pthread_mutex_lock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	
+	rc = pthread_mutex_unlock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
+
 	
 	
 	//deliver
-	pthread_mutex_lock(&mutexDel);
+	rc = pthread_mutex_lock(&mutexDel);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	while(av_del==0) {
-		pthread_cond_wait(&condDel, &mutexDel);
+		rc = pthread_cond_wait(&condDel, &mutexDel);
+		if (rc != 0) {	
+			printf("ERROR: return code from pthread_cond_wait() is %d\n", rc);
+			pthread_exit(args);
+		}
 	}
 	av_del--;
-	pthread_mutex_unlock(&mutexDel);
+	rc = pthread_mutex_unlock(&mutexDel);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
-	pthread_mutex_lock(&mutexOven);
+	rc = pthread_mutex_lock(&mutexOven);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	av_oven += pitses;
-	pthread_cond_signal(&condOven);
-	pthread_mutex_unlock(&mutexOven);
+	rc = pthread_cond_signal(&condOven);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_cond_signal() is %d\n", rc);
+		pthread_exit(args);
+	}
+	rc = pthread_mutex_unlock(&mutexOven);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
 	sleep(pitses*Tpack);
 
@@ -164,53 +305,76 @@ void* manage_order(void* args) {
     long elapsed_pack = (pack_time.tv_sec - start_time.tv_sec) ;
 
 
-	pthread_mutex_lock(&mutexMess);
+	rc = pthread_mutex_lock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	printf("Order No %d prepared in %ld minutes\n", id, elapsed_pack);
-	pthread_mutex_unlock(&mutexMess);
+	rc = pthread_mutex_unlock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
 	
 	int delivery_time = rand_r(&seed) % (Tdelhigh - Tdellow + 1) + Tdellow;
 	sleep(delivery_time);
 	
-	/////////////////////////////////////////////////////
+
 	struct timespec end_time;
 	clock_gettime(CLOCK_REALTIME, &end_del_time);
     long elapsed_total = end_del_time.tv_sec - start_time.tv_sec;
     long cooling_time = end_del_time.tv_sec - pack_time.tv_sec;
-	/////////////////////////////////////////////////////
+	
 
-	pthread_mutex_lock(&mutexMess);
+	rc = pthread_mutex_lock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	printf("Order No %d delivered in %ld minutes\n", id, elapsed_total);
-	pthread_mutex_unlock(&mutexMess);
+	rc = pthread_mutex_unlock(&mutexMess);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
 	
-	pthread_mutex_lock(&mutexDel);
+	rc = pthread_mutex_lock(&mutexDel);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
 	av_del++;
 	pthread_cond_broadcast(&condDel);
-	pthread_mutex_unlock(&mutexDel);
+	rc = pthread_mutex_unlock(&mutexDel);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 
-	/////////////////////////////////////////////////
-	pthread_mutex_lock(&mutexRev);
-	
+
+	rc = pthread_mutex_lock(&mutexRev);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_lock() is %d\n", rc);
+		pthread_exit(args);
+	}	
     total_service_time += elapsed_total;
     if (elapsed_total > max_service_time) {
         max_service_time = elapsed_total;
     }
-	
+
     total_cooling_time += cooling_time;
     if (cooling_time > max_cooling_time) {
         max_cooling_time = cooling_time;
     }
-    pthread_mutex_unlock(&mutexRev);
-	////////////////////////////////////////////////
-	// struct timespec end_time;
-	// clock_gettime(CLOCK_REALTIME, &end_time);
-	// long elapsed_total = end_time.tv_sec - start_time.tv_sec;
+    rc = pthread_mutex_unlock(&mutexRev);
+	if (rc != 0) {	
+		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
+		pthread_exit(args);
+	}
 	
-	// pthread_mutex_lock(&mutexMess);
-	// printf("order No %d prepared in %ld minutes.\n", id, elapsed_pack);
-	// printf("order No %d delivered in %ld minutes.\n", id, elapsed_total);
-	// pthread_mutex_unlock(&mutexMess);
 	
 	pthread_exit(NULL);
 }
@@ -225,18 +389,60 @@ int main(int argc, char* argv[]) {
 	int Ncust = atoi(argv[1]);
 	int seed = atoi(argv[2]);
 	pthread_t threads[Ncust];
+	int rc;
 	
-	pthread_mutex_init(&mutexTel, NULL);
-	pthread_mutex_init(&mutexMess, NULL);
-	pthread_mutex_init(&mutexRev, NULL);
-	pthread_mutex_init(&mutexCook, NULL);
-	pthread_mutex_init(&mutexOven, NULL);
-	pthread_mutex_init(&mutexDel, NULL);
+	rc = pthread_mutex_init(&mutexTel, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_init() is %d\n", rc);
+		exit(-1);
+	}
+	rc = pthread_mutex_init(&mutexMess, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_init() is %d\n", rc);
+		exit(-1);
+	}
+	rc = pthread_mutex_init(&mutexRev, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_init() is %d\n", rc);
+		exit(-1);
+	}
+	rc = pthread_mutex_init(&mutexCook, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_init() is %d\n", rc);
+		exit(-1);
+	}
+	rc = pthread_mutex_init(&mutexOven, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_init() is %d\n", rc);
+		exit(-1);
+	}
+	rc = pthread_mutex_init(&mutexDel, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_init() is %d\n", rc);
+		exit(-1);
+	}
+
 	
-	pthread_cond_init(&condTel, NULL);
-	pthread_cond_init(&condCook, NULL);
-	pthread_cond_init(&condOven, NULL);
-	pthread_cond_init(&condDel, NULL);
+	rc = pthread_cond_init(&condTel, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_cond_init() is %d\n", rc);
+		exit(-1);
+	}
+	rc = pthread_cond_init(&condCook, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_cond_init() is %d\n", rc);
+		exit(-1);
+	}
+	rc = pthread_cond_init(&condOven, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_cond_init() is %d\n", rc);
+		exit(-1);
+	}
+	rc = pthread_cond_init(&condDel, NULL);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_cond_init() is %d\n", rc);
+		exit(-1);
+	}
 	///////////////////////
 	struct timespec start_time;
 	
@@ -247,12 +453,20 @@ int main(int argc, char* argv[]) {
 		args->id = i+1;
 		args->seed = seed +i;
 		args->start_time = start_time;
-		pthread_create(&threads[i], NULL, manage_order, args);
+		rc = pthread_create(&threads[i], NULL, manage_order, args);
+		if (rc != 0) {
+    		printf("ERROR: return code from pthread_create() is %d\n", rc);
+       		exit(-1);
+		}
 		sleep(rand_r(&seed) % (Torderhigh + Torderlow));
 	}
 	
 	for (int i = 0; i < Ncust; i++){
-		pthread_join(threads[i], NULL);
+		rc = pthread_join(threads[i], NULL);
+		if (rc != 0) {
+			printf("ERROR: return code from pthread_join() is %d\n", rc);
+			exit(-1);		
+		}
 		
 	}
 		
@@ -270,17 +484,65 @@ int main(int argc, char* argv[]) {
         printf("Max cooling time: %ld minutes\n", (max_cooling_time));
     }
 	
-	pthread_mutex_destroy(&mutexTel);
-	pthread_mutex_destroy(&mutexMess);
-	pthread_mutex_destroy(&mutexRev);
-	pthread_mutex_destroy(&mutexCook);
-	pthread_mutex_destroy(&mutexOven);
-	pthread_mutex_destroy(&mutexDel);
+	rc = pthread_mutex_destroy(&mutexTel);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+
+	rc = pthread_mutex_destroy(&mutexMess);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+
+	rc = pthread_mutex_destroy(&mutexRev);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+
+	rc = pthread_mutex_destroy(&mutexCook);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+
+	rc = pthread_mutex_destroy(&mutexOven);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+
+	rc = pthread_mutex_destroy(&mutexDel);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_mutex_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+
 		
-	pthread_cond_destroy(&condTel);
-	pthread_cond_destroy(&condCook);
-	pthread_cond_destroy(&condOven);
-	pthread_cond_destroy(&condDel);
+	rc = pthread_cond_destroy(&condTel);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_cond_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+	rc = pthread_cond_destroy(&condCook);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_cond_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+	rc = pthread_cond_destroy(&condOven);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_cond_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+	rc = pthread_cond_destroy(&condDel);
+	if (rc != 0) {
+		printf("ERROR: return code from pthread_cond_destroy() is %d\n", rc);
+		exit(-1);		
+	}
+
+	
 	
 	return 0;
 }
