@@ -287,7 +287,7 @@ void* manage_order(void* args) {
 		pthread_exit(args);
 	}	
 	av_oven += pitses;
-	rc = pthread_cond_signal(&condOven);
+	rc = pthread_cond_broadcast(&condOven); //edo allagi
 	if (rc != 0) {	
 		printf("ERROR: return code from pthread_cond_signal() is %d\n", rc);
 		pthread_exit(args);
@@ -477,7 +477,7 @@ int main(int argc, char* argv[]) {
     printf("Total successful orders: %d\n", success);
     printf("Total failed orders: %d\n", failed);
 
-	 if (success > 0) {
+	if (success > 0) {
         printf("Average service time: %ld minutes\n", total_service_time / success);
         printf("Max service time: %ld minutes\n", max_service_time);
         printf("Average cooling time: %ld minutes\n", (total_cooling_time) / success);
