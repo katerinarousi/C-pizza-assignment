@@ -192,6 +192,7 @@ void* manage_order(void* args) {
 	}
 	av_cook--;
 	rc = pthread_mutex_unlock(&mutexCook);
+	
 	if (rc != 0) {	
 		printf("ERROR: return code from pthread_mutex_unlock() is %d\n", rc);
 		pthread_exit(args);
