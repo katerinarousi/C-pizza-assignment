@@ -1,6 +1,6 @@
 
-SOURCE_FILE="mainprogram.c"
-EXECUTABLE="mainprogram"
+SOURCE_FILE="p3210024-t8210130.c"
+EXECUTABLE="p3210024-t8210130"
 
 gcc -pthread -o $EXECUTABLE $SOURCE_FILE
 
